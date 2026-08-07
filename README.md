@@ -11,7 +11,7 @@ Atualmente, dois plugins oficiais estão disponíveis:
 
 O compilador React não está habilitado neste modelo devido ao seu impacto no desempenho de desenvolvimento e compilação. Para adicioná-lo,[consulte esta documentação](https://react.dev/learn/react-compiler/installation).
 
-## Expanding the Oxlint configuration
+## Expandindo a configuração do Oxlint
 
 Se você estiver desenvolvendo um aplicativo de produção, recomendamos habilitar as regras de lint com reconhecimento de tipos instalando ``oxlint-tsgolinte`` editando ``.oxlintrc.json``:
 ```json
