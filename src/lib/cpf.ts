@@ -3,11 +3,20 @@
  * Usado antes de validar ou comparar CPFs, já que o mesmo CPF pode vir
  * formatado de jeitos diferentes em cada planilha.
  *
+ * Quando a célula original é numérica, o Excel descarta zeros à esquerda
+ * (ex: CPF "01445390800" vira o número 1445390800) — nesse caso completamos
+ * de volta para 11 dígitos. Não fazemos isso para valores que já vieram como
+ * texto, pois aí um CPF curto é mais provável de ser erro de digitação real.
+ *
  * @param value Valor bruto lido da célula (pode ser string, number, etc).
  * @returns Apenas os dígitos do CPF, ex: "11144477735".
  */
 export function normalizeCpf(value: unknown): string {
-  return String(value ?? '').replace(/\D/g, '')
+  const digits = String(value ?? '').replace(/\D/g, '')
+  if (typeof value === 'number' && digits.length > 0 && digits.length < 11) {
+    return digits.padStart(11, '0')
+  }
+  return digits
 }
 
 /**

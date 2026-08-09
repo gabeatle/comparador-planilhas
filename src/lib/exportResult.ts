@@ -26,19 +26,18 @@ function toExportRow(row: ComparisonRow) {
 
 /**
  * Gera e baixa a planilha final com o resultado da comparação, no formato
- * escolhido pelo usuário (.xlsx ou .xls). O arquivo final tem 3 abas:
- *
- * - "Resumo": contagem de entradas, saídas, alterados e total de ativos.
- * - "Ativos": todo mundo que continua ativo no mês atual (entrada, alterado
- *   e permanece), com uma coluna de Status indicando o que aconteceu.
- * - "Saídas": só quem deixou de aparecer na planilha do mês atual.
+ * escolhido pelo usuário (.xlsx ou .xls). O arquivo final tem uma aba por
+ * indicador ("Resumo") mais uma aba para cada um dos filtros exibidos na
+ * tela de resultado, na mesma ordem: "Todos", "Entradas", "Saídas" e
+ * "Alterados".
  *
  * @param result Resultado da comparação (linhas classificadas + resumo).
  * @param format Formato de exportação escolhido pelo usuário.
  */
 export async function exportComparison(result: ComparisonResult, format: 'xlsx' | 'xls'): Promise<void> {
-  const ativos = result.rows.filter((row) => row.status !== 'saida')
+  const entradas = result.rows.filter((row) => row.status === 'entrada')
   const saidas = result.rows.filter((row) => row.status === 'saida')
+  const alterados = result.rows.filter((row) => row.status === 'alterado')
 
   const resumo = [
     { Indicador: 'Entradas', Quantidade: result.summary.entradas },
@@ -50,8 +49,10 @@ export async function exportComparison(result: ComparisonResult, format: 'xlsx' 
 
   const workbook = await buildWorkbook([
     { name: 'Resumo', rows: resumo },
-    { name: 'Ativos', rows: ativos.map(toExportRow) },
+    { name: 'Todos', rows: result.rows.map(toExportRow) },
+    { name: 'Entradas', rows: entradas.map(toExportRow) },
     { name: 'Saídas', rows: saidas.map(toExportRow) },
+    { name: 'Alterados', rows: alterados.map(toExportRow) },
   ])
 
   await downloadWorkbook(workbook, 'planilha-atualizada', format)
