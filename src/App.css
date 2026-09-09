@@ -88,13 +88,21 @@
   gap: 24px;
 }
 
+/* Quando as duas seções chegam no passo de resultado ao mesmo tempo, ficam lado a lado em vez de empilhadas. */
+.app-main--split {
+  max-width: 1600px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  align-items: start;
+}
+
 .comparator-section {
   display: flex;
   flex-direction: column;
   gap: 24px;
 }
 
-.comparator-section + .comparator-section {
+.app-main:not(.app-main--split) .comparator-section + .comparator-section {
   padding-top: 32px;
   border-top: 1px solid var(--border);
 }

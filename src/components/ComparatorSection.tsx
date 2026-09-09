@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ComparatorProfile } from '../comparatorProfiles'
 import { UploadStep } from './UploadStep'
 import type { LoadedFile } from './UploadStep'
@@ -8,7 +8,7 @@ import { guessIdentityMapping } from '../lib/mapping'
 import { buildRecords, compareMonths } from '../lib/compare'
 import type { ComparisonField, IdentityMapping } from '../types'
 
-type Step = 'upload' | 'mapping' | 'result'
+export type Step = 'upload' | 'mapping' | 'result'
 
 /** Ordem fixa dos passos do fluxo, usada para navegação e para os indicadores no topo da tela. */
 const STEP_ORDER: Step[] = ['upload', 'mapping', 'result']
@@ -22,6 +22,8 @@ const STEP_LABELS: Record<Step, string> = {
 
 interface ComparatorSectionProps {
   profile: ComparatorProfile
+  /** Chamado sempre que o passo atual desta seção muda, para o `App.tsx` decidir o layout (ver `.app-main--split`). */
+  onStepChange?: (step: Step) => void
 }
 
 /**
@@ -31,8 +33,12 @@ interface ComparatorSectionProps {
  * outras que estiverem na mesma página (ver `App.tsx`), inclusive quanto ao
  * passo atual.
  */
-export function ComparatorSection({ profile }: ComparatorSectionProps) {
+export function ComparatorSection({ profile, onStepChange }: ComparatorSectionProps) {
   const [step, setStep] = useState<Step>('upload')
+
+  useEffect(() => {
+    onStepChange?.(step)
+  }, [step, onStepChange])
 
   const [previous, setPrevious] = useState<LoadedFile | null>(null)
   const [current, setCurrent] = useState<LoadedFile | null>(null)
