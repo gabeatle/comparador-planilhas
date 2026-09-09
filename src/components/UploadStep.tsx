@@ -81,6 +81,11 @@ function UploadSlot({ id, title, value, onChange }: UploadSlotProps) {
 }
 
 interface UploadStepProps {
+  /** Prefixo único da seção (perfil), usado para evitar colisão de ids de elementos quando duas seções coexistem na página. */
+  sectionId: string
+  previousLabel: string
+  currentLabel: string
+  description: string
   previous: LoadedFile | null
   current: LoadedFile | null
   onPreviousChange: (value: LoadedFile | null) => void
@@ -93,21 +98,28 @@ interface UploadStepProps {
  * e mês atual). O botão "Continuar" só fica habilitado depois que os dois
  * arquivos foram lidos com sucesso.
  */
-export function UploadStep({ previous, current, onPreviousChange, onCurrentChange, onContinue }: UploadStepProps) {
+export function UploadStep({
+  sectionId,
+  previousLabel,
+  currentLabel,
+  description,
+  previous,
+  current,
+  onPreviousChange,
+  onCurrentChange,
+  onContinue,
+}: UploadStepProps) {
   const canContinue = Boolean(previous && current)
 
   return (
     <div className="card">
       <div>
         <h2>1. Envie as duas planilhas</h2>
-        <p className="card-subtitle">
-          Formatos aceitos: .xls e .xlsx. As duas planilhas devem ser da mesma operadora e do mesmo tipo de
-          plano (saúde, vida ou previdência).
-        </p>
+        <p className="card-subtitle">{description}</p>
       </div>
       <div className="upload-grid">
-        <UploadSlot id="upload-previous" title="Planilha do mês anterior" value={previous} onChange={onPreviousChange} />
-        <UploadSlot id="upload-current" title="Planilha do mês atual" value={current} onChange={onCurrentChange} />
+        <UploadSlot id={`${sectionId}-upload-previous`} title={previousLabel} value={previous} onChange={onPreviousChange} />
+        <UploadSlot id={`${sectionId}-upload-current`} title={currentLabel} value={current} onChange={onCurrentChange} />
       </div>
       <div className="actions-row">
         <button type="button" className="btn btn-primary" disabled={!canContinue} onClick={onContinue}>

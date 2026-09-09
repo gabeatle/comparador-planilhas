@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { ComparisonResult } from '../types'
-import { FIELD_LABELS, ISSUE_LABELS } from '../types'
+import { ISSUE_LABELS } from '../types'
 import { exportComparison } from '../lib/exportResult'
 import { StatusBadge } from './StatusBadge'
 
@@ -15,6 +15,8 @@ const TABS: { key: TabKey; label: string }[] = [
 ]
 
 interface ResultStepProps {
+  /** Prefixo único da seção (perfil), usado para evitar colisão de ids de elementos quando duas seções coexistem na página. */
+  sectionId: string
   result: ComparisonResult
   onReset: () => void
 }
@@ -24,7 +26,7 @@ interface ResultStepProps {
  * filtrável por categoria (Todos/Entradas/Saídas/Alterados) e o botão de
  * exportação da planilha final.
  */
-export function ResultStep({ result, onReset }: ResultStepProps) {
+export function ResultStep({ sectionId, result, onReset }: ResultStepProps) {
   const [tab, setTab] = useState<TabKey>('todos')
   const [format, setFormat] = useState<'xlsx' | 'xls'>('xlsx')
   const [exporting, setExporting] = useState(false)
@@ -35,7 +37,7 @@ export function ResultStep({ result, onReset }: ResultStepProps) {
     setExporting(true)
     setExportError(null)
     try {
-      await exportComparison(result, format)
+      await exportComparison(result, format, sectionId)
     } catch (err) {
       setExportError(err instanceof Error ? err.message : 'Não foi possível gerar o arquivo.')
     } finally {
@@ -108,31 +110,31 @@ export function ResultStep({ result, onReset }: ResultStepProps) {
             <thead>
               <tr>
                 <th>Status</th>
-                <th>CPF</th>
-                <th>Operadora</th>
-                <th>Plano</th>
-                <th>Valor</th>
-                <th>Fatura</th>
-                <th>Nº carteirinha</th>
+                {result.identityFields.map((field) => (
+                  <th key={field.key}>{field.label}</th>
+                ))}
+                {result.fields.map((field) => (
+                  <th key={field.id}>{field.label}</th>
+                ))}
                 <th>Alterações</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((row, index) => (
-                <tr key={`${row.cpfDisplay}-${row.carteirinha}-${row.status}-${index}`}>
+                <tr key={`${row.status}-${index}`}>
                   <td>
                     <StatusBadge status={row.status} />
                   </td>
-                  <td>{row.cpfDisplay}</td>
-                  <td>{row.operadora}</td>
-                  <td>{row.plano}</td>
-                  <td>{row.valorDisplay}</td>
-                  <td>{row.fatura}</td>
-                  <td>{row.carteirinha}</td>
+                  {result.identityFields.map((field) => (
+                    <td key={field.key}>{row.identity[field.key] ?? ''}</td>
+                  ))}
+                  {result.fields.map((field) => (
+                    <td key={field.id}>{row.values[field.id] ?? ''}</td>
+                  ))}
                   <td className="changes-cell">
                     {row.changes.map((change) => (
-                      <div key={change.field}>
-                        {FIELD_LABELS[change.field]}: {change.before} → {change.after}
+                      <div key={change.fieldId}>
+                        {change.label}: {change.before} → {change.after}
                       </div>
                     ))}
                     {row.issues.length > 0 && (
@@ -153,8 +155,12 @@ export function ResultStep({ result, onReset }: ResultStepProps) {
           Nova comparação
         </button>
         <div className="export-row">
-          <label htmlFor="export-format">Formato</label>
-          <select id="export-format" value={format} onChange={(event) => setFormat(event.target.value as 'xlsx' | 'xls')}>
+          <label htmlFor={`${sectionId}-export-format`}>Formato</label>
+          <select
+            id={`${sectionId}-export-format`}
+            value={format}
+            onChange={(event) => setFormat(event.target.value as 'xlsx' | 'xls')}
+          >
             <option value="xlsx">.xlsx</option>
             <option value="xls">.xls</option>
           </select>

@@ -1,39 +1,38 @@
-import type { ColumnMapping, FieldKey } from '../types'
-import { FIELD_KEYS } from '../types'
+import type { IdentityFieldDef, IdentityMapping } from '../types'
 
 /**
- * Palavras-chave usadas para reconhecer automaticamente qual coluna da
- * planilha corresponde a cada campo esperado. A busca é por "contém", então
- * plural/prefixos/sufixos (ex: "CPF do titular") também são reconhecidos.
- */
-const FIELD_KEYWORDS: Record<FieldKey, string[]> = {
-  operadora: ['operadora'],
-  cpf: ['cpf'],
-  plano: ['plano'],
-  valor: ['valor', 'mensalidade', 'preco', 'preço'],
-  fatura: ['fatura', 'nota fiscal', ' nf', 'nf '],
-  carteirinha: ['carteirinha', 'carteira', 'matricula', 'matrícula'],
-}
-
-/**
- * Tenta adivinhar automaticamente o mapeamento de colunas de uma planilha,
- * comparando o nome de cada cabeçalho com as palavras-chave de cada campo.
- * Usada para pré-preencher a tela de mapeamento e poupar trabalho manual do
- * usuário — o resultado ainda pode (e deve) ser ajustado por ele antes de
- * comparar as planilhas.
+ * Tenta adivinhar automaticamente quais colunas da planilha correspondem a
+ * cada campo de identidade do perfil (CPF/carteirinha em Fatura, CPF/nome/
+ * plano em Matriz etc.), comparando o nome de cada cabeçalho com as
+ * palavras-chave de cada campo (`field.keywords`). Usada para pré-preencher
+ * a tela de mapeamento — o resultado ainda pode (e deve) ser ajustado pelo
+ * usuário antes de comparar as planilhas. Um cabeçalho já usado por outro
+ * campo não é reaproveitado.
  *
  * @param headers Lista de cabeçalhos de coluna lidos da planilha.
- * @returns Mapeamento campo -> nome do cabeçalho, com '' para campos não reconhecidos.
+ * @param identityFields Campos de identidade do perfil (Fatura, Matriz, etc.).
+ * @returns Mapeamento campo de identidade -> nome do cabeçalho, com '' para campos não reconhecidos.
  */
-export function guessMapping(headers: string[]): ColumnMapping {
-  const mapping = {} as ColumnMapping
-  for (const field of FIELD_KEYS) {
-    const keywords = FIELD_KEYWORDS[field]
+export function guessIdentityMapping(headers: string[], identityFields: IdentityFieldDef[]): IdentityMapping {
+  const mapping: IdentityMapping = {}
+  for (const field of identityFields) {
     const match = headers.find((header) => {
+      if (Object.values(mapping).includes(header)) return false
       const normalized = ` ${header.toLowerCase()} `
-      return keywords.some((keyword) => normalized.includes(keyword))
+      return field.keywords.some((keyword) => normalized.includes(keyword))
     })
-    mapping[field] = match ?? ''
+    mapping[field.key] = match ?? ''
   }
   return mapping
 }
+
+/** Remove acentos, espaços nas pontas e diferenças de caixa, para comparar nomes de cabeçalho por igualdade. */
+export function normalizeHeader(header: string): string {
+  return header
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+}
+

@@ -1,23 +1,17 @@
 import type {
   BeneficiaryRecord,
   CellValue,
-  ColumnMapping,
+  ComparisonField,
   ComparisonResult,
   ComparisonRow,
   ComparisonSummary,
   FieldChange,
-  FieldKey,
+  IdentityFieldDef,
+  IdentityMapping,
   RowStatus,
 } from '../types'
 import { cellToDisplay, cellToNumber } from './format'
 import { formatCpf, isValidCpf, normalizeCpf } from './cpf'
-
-/**
- * Campos que, se mudarem entre as duas planilhas para o mesmo beneficiário,
- * fazem a linha ser classificada como "alterado". CPF e carteirinha não
- * entram aqui porque juntos formam a chave de identidade (ver `buildRecords`).
- */
-const COMPARABLE_FIELDS: FieldKey[] = ['operadora', 'plano', 'valor', 'fatura']
 
 /**
  * Contador usado para gerar chaves únicas para linhas sem CPF válido (ver
@@ -28,64 +22,93 @@ const COMPARABLE_FIELDS: FieldKey[] = ['operadora', 'plano', 'valor', 'fatura']
 let noKeyCounter = 0
 
 /**
- * Converte as linhas cruas de uma planilha (já mapeadas coluna -> campo) em
- * registros de beneficiário prontos para comparação, aplicando o mapeamento
- * de colunas escolhido pelo usuário e validando cada linha.
+ * Converte as linhas cruas de uma planilha em registros de beneficiário
+ * prontos para comparação, aplicando o mapeamento de identidade do perfil
+ * (CPF + carteirinha em Fatura, CPF + nome + plano em Matriz, etc.) e os
+ * campos de comparação escolhidos pelo usuário, e validando cada linha.
  *
  * Cada registro recebe uma `key` que identifica o beneficiário entre as duas
- * planilhas: CPF normalizado + número da carteirinha (permite que a mesma
- * pessoa tenha mais de uma carteirinha/plano ativos ao mesmo tempo, cada um
- * tratado como um registro independente). Linhas sem CPF não podem ser
- * casadas com segurança, então recebem uma chave única (nunca vão "casar"
- * com nada na outra planilha) e ficam marcadas com o problema 'cpf-vazio'.
+ * planilhas: a concatenação dos valores de todos os campos de identidade, na
+ * ordem de `identityFields` (permite que a mesma pessoa apareça mais de uma
+ * vez com identidade diferente — ex: dois planos — cada uma tratada como um
+ * registro independente). O campo com `isCpf: true` recebe validação extra
+ * (dígito verificador); se estiver vazio, a linha não pode ser casada com
+ * segurança e recebe uma chave única (nunca vai "casar" com nada na outra
+ * planilha).
  *
  * Também detecta e marca (sem descartar) linhas com problemas: CPF vazio,
- * CPF com dígito verificador inválido, campos obrigatórios em branco, ou
- * chave duplicada dentro da mesma planilha.
+ * CPF com dígito verificador inválido, algum outro campo de identidade em
+ * branco, ou chave duplicada dentro da mesma planilha.
  *
  * @param rows Linhas cruas lidas da planilha (uma por beneficiário).
- * @param mapping Qual coluna da planilha corresponde a cada campo (operadora, cpf, plano...).
+ * @param identity Qual coluna da planilha corresponde a cada campo de identidade.
+ * @param identityFields Campos de identidade do perfil (define quais colunas formam a chave e a ordem delas).
+ * @param fields Campos de comparação escolhidos pelo usuário, com a coluna desta planilha para cada um.
+ * @param side Se estas linhas são da planilha do mês anterior ou do mês atual (define qual coluna de `fields` ler).
  * @returns Lista de registros de beneficiário, cada um com sua lista de problemas encontrados.
  */
-export function buildRecords(rows: Record<string, CellValue>[], mapping: ColumnMapping): BeneficiaryRecord[] {
+export function buildRecords(
+  rows: Record<string, CellValue>[],
+  identity: IdentityMapping,
+  identityFields: IdentityFieldDef[],
+  fields: ComparisonField[],
+  side: 'previous' | 'current',
+): BeneficiaryRecord[] {
   const records = rows.map((row): BeneficiaryRecord => {
-    const cpfDigits = normalizeCpf(row[mapping.cpf])
-    const carteirinha = cellToDisplay(row[mapping.carteirinha])
-    const operadora = cellToDisplay(row[mapping.operadora])
-    const plano = cellToDisplay(row[mapping.plano])
-    const fatura = cellToDisplay(row[mapping.fatura])
-    const valorDisplay = cellToDisplay(row[mapping.valor])
-    const valorNumber = cellToNumber(row[mapping.valor])
-
     const issues: BeneficiaryRecord['issues'] = []
-    if (!cpfDigits) issues.push('cpf-vazio')
-    else if (!isValidCpf(cpfDigits)) issues.push('cpf-invalido')
-    if (!operadora || !plano || !carteirinha) issues.push('campo-faltando')
+    const identityValues: Record<string, string> = {}
+    const keyParts: string[] = []
+    let hasRealKey = true
 
-    // Sem CPF não há como casar com segurança entre as duas planilhas: cada
-    // linha recebe uma chave única para não ser confundida com outra pessoa.
-    const key = cpfDigits ? `${cpfDigits}|${carteirinha.trim().toLowerCase()}` : `sem-cpf-${noKeyCounter++}`
+    for (const field of identityFields) {
+      const rawValue = row[identity[field.key]]
+      if (field.isCpf) {
+        const digits = normalizeCpf(rawValue)
+        identityValues[field.key] = digits ? formatCpf(digits) : cellToDisplay(rawValue)
+        if (!digits) {
+          issues.push('cpf-vazio')
+          hasRealKey = false
+        } else if (!isValidCpf(digits)) {
+          issues.push('cpf-invalido')
+        }
+        keyParts.push(digits)
+      } else {
+        const display = cellToDisplay(rawValue)
+        identityValues[field.key] = display
+        if (!display) issues.push('identidade-vazia')
+        keyParts.push(display.trim().toLowerCase())
+      }
+    }
+
+    // Sem uma identidade completa (CPF vazio) não há como casar com
+    // segurança entre as duas planilhas: a linha recebe uma chave única
+    // para não ser confundida com outra pessoa.
+    const key = hasRealKey ? keyParts.join('|') : `sem-chave-${noKeyCounter++}`
+
+    const fieldValues: BeneficiaryRecord['fields'] = {}
+    for (const field of fields) {
+      const column = side === 'previous' ? field.previousColumn : field.currentColumn
+      fieldValues[field.id] = {
+        display: cellToDisplay(row[column]),
+        numeric: cellToNumber(row[column]),
+      }
+    }
 
     return {
       key,
-      operadora,
-      cpfDigits,
-      cpfDisplay: cpfDigits ? formatCpf(cpfDigits) : cellToDisplay(row[mapping.cpf]),
-      plano,
-      valorDisplay,
-      valorNumber,
-      fatura,
-      carteirinha,
+      identity: identityValues,
+      fields: fieldValues,
       issues,
+      hasRealKey,
     }
   })
 
-  // Segunda passada: marca como duplicada qualquer chave (CPF+carteirinha)
-  // que apareça mais de uma vez na mesma planilha.
+  // Segunda passada: marca como duplicada qualquer chave real (identidade
+  // completa) que apareça mais de uma vez na mesma planilha.
   const keyCounts = new Map<string, number>()
   records.forEach((record) => keyCounts.set(record.key, (keyCounts.get(record.key) ?? 0) + 1))
   records.forEach((record) => {
-    if (record.cpfDigits && (keyCounts.get(record.key) ?? 0) > 1) {
+    if (record.hasRealKey && (keyCounts.get(record.key) ?? 0) > 1) {
       record.issues.push('chave-duplicada')
     }
   })
@@ -94,56 +117,34 @@ export function buildRecords(rows: Record<string, CellValue>[], mapping: ColumnM
 }
 
 /**
- * Lê o valor de um campo comparável de um registro, devolvendo tanto a
- * versão para exibição (texto) quanto a numérica (só preenchida para
- * "valor", que é o único campo comparado numericamente).
- *
- * @param record Registro de beneficiário.
- * @param field Campo a ser lido.
- * @returns Valor em texto e, se aplicável, em número.
- */
-function fieldValue(record: BeneficiaryRecord, field: FieldKey): { display: string; numeric: number | null } {
-  switch (field) {
-    case 'operadora':
-      return { display: record.operadora, numeric: null }
-    case 'plano':
-      return { display: record.plano, numeric: null }
-    case 'fatura':
-      return { display: record.fatura, numeric: null }
-    case 'valor':
-      return { display: record.valorDisplay, numeric: record.valorNumber }
-    default:
-      return { display: '', numeric: null }
-  }
-}
-
-/**
  * Compara o mesmo campo entre o registro do mês anterior e do mês atual de
  * um beneficiário, e diz se houve mudança relevante.
  *
- * O campo "valor" é comparado numericamente com uma margem de tolerância
- * (0,005) para absorver diferenças de arredondamento; os demais campos são
- * comparados como texto, ignorando maiúsculas/minúsculas e espaços nas
- * pontas (para não marcar como "alterado" uma diferença só de formatação).
+ * Quando o campo é reconhecido como número dos dois lados (ver
+ * `cellToNumber`), a comparação é numérica com uma margem de tolerância
+ * (0,005) para absorver diferenças de arredondamento; caso contrário, é
+ * comparado como texto, ignorando maiúsculas/minúsculas e espaços nas pontas
+ * (para não marcar como "alterado" uma diferença só de formatação).
  *
- * @param field Campo a comparar.
+ * @param field Campo de comparação.
  * @param previous Registro do mês anterior.
  * @param current Registro do mês atual.
  * @returns Descrição da mudança (campo + valor antes/depois), ou null se não mudou.
  */
-function fieldsDiffer(field: FieldKey, previous: BeneficiaryRecord, current: BeneficiaryRecord): FieldChange | null {
-  const before = fieldValue(previous, field)
-  const after = fieldValue(current, field)
+function fieldsDiffer(field: ComparisonField, previous: BeneficiaryRecord, current: BeneficiaryRecord): FieldChange | null {
+  const before = previous.fields[field.id]
+  const after = current.fields[field.id]
 
-  if (field === 'valor' && before.numeric !== null && after.numeric !== null) {
+  if (before.numeric !== null && after.numeric !== null) {
     return Math.abs(before.numeric - after.numeric) > 0.005
-      ? { field, before: before.display, after: after.display }
+      ? { fieldId: field.id, label: field.label, before: before.display, after: after.display }
       : null
   }
 
+  /** Ignora espaço nas pontas e caixa, para não marcar como diferença uma variação só de formatação. */
   const normalize = (value: string) => value.trim().toLocaleLowerCase('pt-BR')
   return normalize(before.display) !== normalize(after.display)
-    ? { field, before: before.display, after: after.display }
+    ? { fieldId: field.id, label: field.label, before: before.display, after: after.display }
     : null
 }
 
@@ -153,18 +154,25 @@ function fieldsDiffer(field: FieldKey, previous: BeneficiaryRecord, current: Ben
  *
  * @param status Categoria da linha: entrada, saída, alterado ou permanece.
  * @param record Registro de beneficiário (do mês atual, exceto em caso de saída, onde é o do mês anterior).
+ * @param fields Campos de comparação, na ordem em que devem aparecer na linha.
  * @param changes Lista de campos que mudaram (vazio para entrada/saída/permanece).
  * @returns A linha de resultado pronta para exibição/exportação.
  */
-function toComparisonRow(status: RowStatus, record: BeneficiaryRecord, changes: FieldChange[] = []): ComparisonRow {
+function toComparisonRow(
+  status: RowStatus,
+  record: BeneficiaryRecord,
+  fields: ComparisonField[],
+  changes: FieldChange[] = [],
+): ComparisonRow {
+  const values: Record<string, string> = {}
+  for (const field of fields) {
+    values[field.id] = record.fields[field.id]?.display ?? ''
+  }
+
   return {
     status,
-    cpfDisplay: record.cpfDisplay,
-    carteirinha: record.carteirinha,
-    operadora: record.operadora,
-    plano: record.plano,
-    valorDisplay: record.valorDisplay,
-    fatura: record.fatura,
+    identity: record.identity,
+    values,
     changes,
     issues: record.issues,
   }
@@ -174,20 +182,29 @@ function toComparisonRow(status: RowStatus, record: BeneficiaryRecord, changes: 
  * Função central do app: compara os beneficiários do mês anterior com os do
  * mês atual e classifica cada um em uma categoria.
  *
- * Regra de comparação (casamento por chave CPF+carteirinha, ver `buildRecords`):
+ * Regra de comparação (casamento pela chave de identidade, ver `buildRecords`):
  * - Chave só existe no mês atual -> **entrada** (adesão nova).
  * - Chave só existe no mês anterior -> **saída** (cancelamento).
- * - Chave existe nos dois, mas algum campo comparável mudou -> **alterado**.
+ * - Chave existe nos dois, mas algum campo de comparação mudou -> **alterado**.
  * - Chave existe nos dois, sem nenhuma mudança -> **permanece**.
  *
- * O resultado final é ordenado por CPF e inclui um resumo com a contagem de
- * cada categoria, usado nos cartões de totais da tela de resultado.
+ * O resultado final é ordenado pelo campo de identidade marcado como CPF (ou
+ * pelo primeiro campo de identidade, se nenhum for CPF) e inclui um resumo
+ * com a contagem de cada categoria, usado nos cartões de totais da tela de
+ * resultado.
  *
  * @param previousRecords Registros de beneficiário da planilha do mês anterior.
  * @param currentRecords Registros de beneficiário da planilha do mês atual.
- * @returns As linhas de resultado classificadas e o resumo com os totais.
+ * @param identityFields Campos de identidade do perfil.
+ * @param fields Campos de comparação escolhidos pelo usuário.
+ * @returns As linhas de resultado classificadas, os campos usados e o resumo com os totais.
  */
-export function compareMonths(previousRecords: BeneficiaryRecord[], currentRecords: BeneficiaryRecord[]): ComparisonResult {
+export function compareMonths(
+  previousRecords: BeneficiaryRecord[],
+  currentRecords: BeneficiaryRecord[],
+  identityFields: IdentityFieldDef[],
+  fields: ComparisonField[],
+): ComparisonResult {
   const previousMap = new Map(previousRecords.map((record) => [record.key, record]))
   const currentMap = new Map(currentRecords.map((record) => [record.key, record]))
   const allKeys = new Set<string>([...previousMap.keys(), ...currentMap.keys()])
@@ -199,20 +216,21 @@ export function compareMonths(previousRecords: BeneficiaryRecord[], currentRecor
     const current = currentMap.get(key)
 
     if (current && !previous) {
-      rows.push(toComparisonRow('entrada', current))
+      rows.push(toComparisonRow('entrada', current, fields))
     } else if (previous && !current) {
-      rows.push(toComparisonRow('saida', previous))
+      rows.push(toComparisonRow('saida', previous, fields))
     } else if (previous && current) {
-      const changes = COMPARABLE_FIELDS.map((field) => fieldsDiffer(field, previous, current)).filter(
-        (change): change is FieldChange => change !== null,
-      )
-      const row = toComparisonRow(changes.length > 0 ? 'alterado' : 'permanece', current, changes)
+      const changes = fields
+        .map((field) => fieldsDiffer(field, previous, current))
+        .filter((change): change is FieldChange => change !== null)
+      const row = toComparisonRow(changes.length > 0 ? 'alterado' : 'permanece', current, fields, changes)
       row.issues = Array.from(new Set([...previous.issues, ...current.issues]))
       rows.push(row)
     }
   }
 
-  rows.sort((a, b) => a.cpfDisplay.localeCompare(b.cpfDisplay, 'pt-BR'))
+  const sortField = identityFields.find((field) => field.isCpf) ?? identityFields[0]
+  rows.sort((a, b) => a.identity[sortField.key].localeCompare(b.identity[sortField.key], 'pt-BR'))
 
   const summary: ComparisonSummary = {
     entradas: rows.filter((row) => row.status === 'entrada').length,
@@ -222,5 +240,5 @@ export function compareMonths(previousRecords: BeneficiaryRecord[], currentRecor
     totalAtivos: rows.filter((row) => row.status !== 'saida').length,
   }
 
-  return { rows, summary }
+  return { rows, identityFields, fields, summary }
 }
