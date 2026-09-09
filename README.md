@@ -1,31 +1,55 @@
-# React + TypeScript + Vite
+# Comparador de Planilhas · Benefícios
 
-Este modelo fornece uma configuração mínima para fazer o React funcionar no Vite com HMR e algumas regras do Oxlint.
+Web app 100% client-side (sem backend, sem login) para comparar duas planilhas de
+beneficiários de plano de saúde/vida/previdência mês a mês, apontando entradas,
+saídas e alterações. Os dados nunca saem do navegador do usuário.
 
-Atualmente, dois plugins oficiais estão disponíveis:
+🔗 **[Acessar o app](https://gabeatle.github.io/comparador-planilhas/)**
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## O que o app faz
 
-## Compilador React
+O app tem duas seções de comparação independentes, uma embaixo da outra na mesma
+página:
 
-O compilador React não está habilitado neste modelo devido ao seu impacto no desempenho de desenvolvimento e compilação. Para adicioná-lo,[consulte esta documentação](https://react.dev/learn/react-compiler/installation).
+- **Comparador de Faturas** — identidade CPF + Nº da carteirinha.
+- **Comparador de Matriz** — identidade CPF + Nometitular + Nomedependente + Plano.
 
-## Expandindo a configuração do Oxlint
+Cada seção segue o mesmo fluxo:
 
-Se você estiver desenvolvendo um aplicativo de produção, recomendamos habilitar as regras de lint com reconhecimento de tipos instalando ``oxlint-tsgolinte`` editando ``.oxlintrc.json``:
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+1. **Upload** — sobe a planilha do mês anterior e a do mês atual (.xls ou .xlsx).
+2. **Mapeamento** — confirma as colunas de identidade (auto-detectadas por
+   palavra-chave) e marca, numa lista de checkboxes, quais outras colunas entram
+   na comparação. Marcar uma coluna pareia automaticamente com a de mesmo nome
+   na outra planilha.
+3. **Resultado** — mostra entradas, saídas e alterações numa tabela filtrável
+   (Todos/Entradas/Saídas/Alterados), com exportação em .xlsx ou .xls (abas
+   Resumo, Todos, Entradas, Saídas, Alterados). Quando as duas seções chegam
+   nesse passo ao mesmo tempo, o resultado das duas aparece lado a lado, para
+   não confundir qual tabela é de qual planilha.
+
+Linhas com problema (CPF vazio/inválido, campo de identidade vazio, chave
+duplicada na mesma planilha) são sinalizadas na tabela, mas nunca bloqueiam o
+processamento.
+
+## Stack técnica
+
+- **React 19 + TypeScript + Vite**
+- **[SheetJS (xlsx)](https://sheetjs.com/)**, carregado a partir do CDN oficial
+  (não do pacote `xlsx` do npm) e importado dinamicamente para não engordar o
+  bundle inicial
+- Tema claro/escuro com preferência salva no navegador
+
+## Rodando localmente
+
+```bash
+npm install
+npm run dev       # servidor de desenvolvimento
+npm run build     # build de produção (roda o type-check antes)
+npm run lint       # oxlint
 ```
 
-Consulte a [documentação das regras do Oxlint ](https://oxc.rs/docs/guide/usage/linter/rules) para obter a lista completa de regras e categorias.
+## Deploy
+
+Publicado no GitHub Pages via GitHub Actions
+(`.github/workflows/deploy.yml`), que builda e publica automaticamente a cada
+push na branch `main`. Não é necessário nenhum passo manual de deploy.
