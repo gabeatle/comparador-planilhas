@@ -4,11 +4,12 @@ import { ISSUE_LABELS } from '../types'
 import { exportComparison } from '../lib/exportResult'
 import { StatusBadge } from './StatusBadge'
 
-type TabKey = 'todos' | 'entrada' | 'saida' | 'alterado'
+type TabKey = 'todos' | 'diferencas' | 'entrada' | 'saida' | 'alterado'
 
 /** Abas de filtro exibidas acima da tabela de resultado, na ordem em que aparecem na tela. */
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'todos', label: 'Todos' },
+  { key: 'diferencas', label: 'Diferenças' },
   { key: 'entrada', label: 'Entradas' },
   { key: 'saida', label: 'Saídas' },
   { key: 'alterado', label: 'Alterados' },
@@ -48,12 +49,14 @@ export function ResultStep({ sectionId, result, onReset }: ResultStepProps) {
   /** Linhas visíveis na tabela, filtradas pela aba selecionada. */
   const rows = useMemo(() => {
     if (tab === 'todos') return result.rows
+    if (tab === 'diferencas') return result.rows.filter((row) => row.status !== 'permanece')
     return result.rows.filter((row) => row.status === tab)
   }, [result, tab])
 
   /** Contagem exibida entre parênteses em cada aba. */
   const counts: Record<TabKey, number> = {
     todos: result.rows.length,
+    diferencas: result.summary.entradas + result.summary.saidas + result.summary.alterados,
     entrada: result.summary.entradas,
     saida: result.summary.saidas,
     alterado: result.summary.alterados,

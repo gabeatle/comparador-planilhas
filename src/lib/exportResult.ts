@@ -38,8 +38,8 @@ function toExportRow(row: ComparisonRow, identityFields: IdentityFieldDef[], fie
  * Gera e baixa a planilha final com o resultado da comparação, no formato
  * escolhido pelo usuário (.xlsx ou .xls). O arquivo final tem uma aba por
  * indicador ("Resumo") mais uma aba para cada um dos filtros exibidos na
- * tela de resultado, na mesma ordem: "Todos", "Entradas", "Saídas" e
- * "Alterados".
+ * tela de resultado, na mesma ordem: "Todos", "Diferenças", "Entradas",
+ * "Saídas" e "Alterados".
  *
  * @param result Resultado da comparação (linhas classificadas + resumo).
  * @param format Formato de exportação escolhido pelo usuário.
@@ -50,6 +50,7 @@ export async function exportComparison(
   format: 'xlsx' | 'xls',
   filenamePrefix: string,
 ): Promise<void> {
+  const diferencas = result.rows.filter((row) => row.status !== 'permanece')
   const entradas = result.rows.filter((row) => row.status === 'entrada')
   const saidas = result.rows.filter((row) => row.status === 'saida')
   const alterados = result.rows.filter((row) => row.status === 'alterado')
@@ -68,6 +69,7 @@ export async function exportComparison(
   const workbook = await buildWorkbook([
     { name: 'Resumo', rows: resumo },
     { name: 'Todos', rows: result.rows.map(toRow) },
+    { name: 'Diferenças', rows: diferencas.map(toRow) },
     { name: 'Entradas', rows: entradas.map(toRow) },
     { name: 'Saídas', rows: saidas.map(toRow) },
     { name: 'Alterados', rows: alterados.map(toRow) },
