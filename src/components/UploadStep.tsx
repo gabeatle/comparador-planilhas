@@ -1,14 +1,11 @@
 import { useState } from 'react'
 import type { ChangeEvent, DragEvent } from 'react'
 import { readSpreadsheet } from '../lib/excel'
-import type { ParsedSheet } from '../types'
+import type { LoadedFile } from '../types'
 
-export interface LoadedFile {
-  file: File
-  sheet: ParsedSheet
-}
+export type { LoadedFile } from '../types'
 
-interface UploadSlotProps {
+export interface UploadSlotProps {
   id: string
   title: string
   value: LoadedFile | null
@@ -16,12 +13,13 @@ interface UploadSlotProps {
 }
 
 /**
- * Uma área de upload (drag-and-drop ou clique) para um dos dois arquivos —
- * mês anterior ou mês atual. Cuida de ler o arquivo, mostrar o estado de
- * carregamento e exibir erros de leitura; o resultado (planilha lida) sobe
- * para o componente pai via `onChange`.
+ * Uma área de upload (drag-and-drop ou clique) para um único arquivo. Cuida
+ * de ler o arquivo, mostrar o estado de carregamento e exibir erros de
+ * leitura; o resultado (planilha lida) sobe para o componente pai via
+ * `onChange`. Reaproveitada tanto pelo fluxo de 2 planilhas (`UploadStep`)
+ * quanto pelo Unificador, que sobe um número variável de planilhas.
  */
-function UploadSlot({ id, title, value, onChange }: UploadSlotProps) {
+export function UploadSlot({ id, title, value, onChange }: UploadSlotProps) {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 

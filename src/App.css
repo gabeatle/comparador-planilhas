@@ -91,6 +91,15 @@
 /* Quando as duas seções chegam no passo de resultado ao mesmo tempo, ficam lado a lado em vez de empilhadas. */
 .app-main--split {
   max-width: 1600px;
+}
+
+.comparators {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.comparators--split {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
   align-items: start;
@@ -102,7 +111,12 @@
   gap: 24px;
 }
 
-.app-main:not(.app-main--split) .comparator-section + .comparator-section {
+.comparators:not(.comparators--split) .comparator-section + .comparator-section {
+  padding-top: 32px;
+  border-top: 1px solid var(--border);
+}
+
+.comparators + .comparator-section {
   padding-top: 32px;
   border-top: 1px solid var(--border);
 }
@@ -546,6 +560,114 @@
   border: 1px solid var(--border-strong);
   background: var(--surface);
   color: var(--text);
+}
+
+.unify-upload-slot {
+  position: relative;
+}
+
+.unify-upload-slot__remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  line-height: 1;
+  font-size: 1rem;
+}
+
+.unify-upload-slot__remove:hover {
+  color: var(--status-critical);
+  border-color: var(--status-critical);
+}
+
+.unify-add-slot {
+  appearance: none;
+  border: 2px dashed var(--border-strong);
+  border-radius: 14px;
+  padding: 24px 16px;
+  min-height: 96px;
+  background: var(--surface-alt);
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.unify-add-slot span {
+  font-size: 1.8rem;
+  line-height: 1;
+  color: var(--primary);
+}
+
+.unify-add-slot:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.unify-mapping-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.unify-mapping-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.unify-mapping-table th,
+.unify-mapping-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.unify-mapping-table th {
+  background: var(--surface-alt);
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.unify-mapping-table input[type='text'],
+.unify-mapping-table select {
+  width: 100%;
+  min-width: 160px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.unify-remove-field {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.unify-remove-field:hover {
+  color: var(--status-critical);
+  background: var(--surface-alt);
 }
 
 @media (max-width: 640px) {

@@ -117,3 +117,29 @@ export interface ParsedSheet {
   /** Cada linha é um objeto {nomeDoCabeçalho: valor}, na ordem em que aparecem na planilha original. */
   rows: Record<string, CellValue>[]
 }
+
+/** Um arquivo escolhido pelo usuário e já lido (ver `UploadSlot` em components/UploadStep.tsx). */
+export interface LoadedFile {
+  file: File
+  sheet: ParsedSheet
+}
+
+/**
+ * Uma coluna do resultado do Unificador: o rótulo escolhido pelo usuário e,
+ * para cada planilha enviada (indexada pelo id do slot de upload), qual
+ * cabeçalho dela corresponde a esta coluna — vazio se aquela planilha não
+ * tiver a informação (ver `lib/unify.ts`).
+ */
+export interface UnifyField {
+  id: string
+  label: string
+  columnBySource: Record<string, string>
+}
+
+/** Uma linha do resultado do Unificador, já com os valores lidos conforme o mapeamento de colunas. */
+export interface UnifyRow {
+  /** Nome do arquivo de origem desta linha, para diferenciar de onde ela veio depois de empilhada com as outras. */
+  sourceFileName: string
+  /** Valores desta linha, indexados pelo `id` de cada `UnifyField`. */
+  values: Record<string, string>
+}
