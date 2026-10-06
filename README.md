@@ -8,15 +8,22 @@ saídas e alterações. Os dados nunca saem do navegador do usuário.
 
 ## O que o app faz
 
-O app tem duas seções de comparação independentes, uma embaixo da outra na mesma
-página:
+O app tem quatro seções de comparação independentes, uma embaixo da outra na
+mesma página:
 
 - **Comparador de Faturas** — identidade CPF + Nº da carteirinha.
 - **Comparador de Matriz** — identidade CPF + Nometitular + Nomedependente + Plano.
+- **Comparador de PDF** — dois PDFs (mês anterior × mês atual), identidade CPF.
+- **Conferência PDF × Planilha** — um PDF (ex: fatura da operadora) contra uma
+  planilha (ex: matriz da empresa) do mesmo mês, identidade CPF. Em vez de
+  entradas/saídas, mostra quem está **só no PDF**, **só na planilha** ou
+  **divergente** (nos dois, com dados diferentes).
 
 Cada seção segue o mesmo fluxo:
 
-1. **Upload** — sobe a planilha do mês anterior e a do mês atual (.xls ou .xlsx).
+1. **Upload** — sobe os dois arquivos. Faturas e Matriz aceitam .xls, .xlsx ou
+   .pdf com texto selecionável; as seções de PDF aceitam só o formato indicado
+   em cada campo.
 2. **Mapeamento** — confirma as colunas de identidade (auto-detectadas por
    palavra-chave) e marca, numa lista de checkboxes, quais outras colunas entram
    na comparação. Marcar uma coluna pareia automaticamente com a de mesmo nome
@@ -31,12 +38,26 @@ Linhas com problema (CPF vazio/inválido, campo de identidade vazio, chave
 duplicada na mesma planilha) são sinalizadas na tabela, mas nunca bloqueiam o
 processamento.
 
+### PDFs
+
+- **Leitura de PDF** — o Comparador e o Unificador também aceitam PDF gerado por
+  sistema (não escaneado). A tabela é reconstruída pela posição do texto: o
+  cabeçalho é a linha com mais títulos de coluna (de preferência com CPF, Nome,
+  Plano…), cada valor vai para a coluna sobre a qual está, e o cabeçalho
+  repetido, o topo das páginas seguintes e os rodapés são ignorados. Cabeçalhos
+  ou células quebrados em duas linhas ficam só com a primeira linha.
+- **Juntar PDFs** — seção separada que mescla vários PDFs num arquivo só, na
+  ordem escolhida pelo usuário.
+
 ## Stack técnica
 
 - **React 19 + TypeScript + Vite**
 - **[SheetJS (xlsx)](https://sheetjs.com/)**, carregado a partir do CDN oficial
   (não do pacote `xlsx` do npm) e importado dinamicamente para não engordar o
   bundle inicial
+- **[pdf.js](https://mozilla.github.io/pdf.js/)** para ler o texto dos PDFs e
+  **[pdf-lib](https://pdf-lib.js.org/)** para juntá-los, ambos também carregados
+  sob demanda
 - Tema claro/escuro com preferência salva no navegador
 
 ## Rodando localmente

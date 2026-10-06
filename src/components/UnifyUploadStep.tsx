@@ -41,7 +41,7 @@ export function UnifyUploadStep({ slots, onSlotsChange, onContinue }: UnifyUploa
       <div>
         <h2>1. Envie as planilhas</h2>
         <p className="card-subtitle">
-          Formatos aceitos: .xls e .xlsx. Envie pelo menos duas planilhas — use o "+" para adicionar mais.
+          Formatos aceitos: .xls, .xlsx e .pdf (com texto selecionável). Envie pelo menos duas planilhas — use o "+" para adicionar mais.
         </p>
       </div>
 

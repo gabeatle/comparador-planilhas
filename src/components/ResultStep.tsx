@@ -3,21 +3,25 @@ import type { ComparisonResult } from '../types'
 import { ISSUE_LABELS } from '../types'
 import { exportComparison } from '../lib/exportResult'
 import { StatusBadge } from './StatusBadge'
+import type { ComparatorLabels } from '../comparatorProfiles'
 
 type TabKey = 'todos' | 'diferencas' | 'entrada' | 'saida' | 'alterado'
 
 /** Abas de filtro exibidas acima da tabela de resultado, na ordem em que aparecem na tela. */
-const TABS: { key: TabKey; label: string }[] = [
-  { key: 'todos', label: 'Todos' },
-  { key: 'diferencas', label: 'Diferenças' },
-  { key: 'entrada', label: 'Entradas' },
-  { key: 'saida', label: 'Saídas' },
-  { key: 'alterado', label: 'Alterados' },
-]
+function buildTabs(labels: ComparatorLabels): { key: TabKey; label: string }[] {
+  return [
+    { key: 'todos', label: 'Todos' },
+    { key: 'diferencas', label: 'Diferenças' },
+    { key: 'entrada', label: labels.plural.entrada },
+    { key: 'saida', label: labels.plural.saida },
+    { key: 'alterado', label: labels.plural.alterado },
+  ]
+}
 
 interface ResultStepProps {
   /** Prefixo único da seção (perfil), usado para evitar colisão de ids de elementos quando duas seções coexistem na página. */
   sectionId: string
+  labels: ComparatorLabels
   result: ComparisonResult
   onReset: () => void
 }
@@ -27,7 +31,7 @@ interface ResultStepProps {
  * filtrável por categoria (Todos/Entradas/Saídas/Alterados) e o botão de
  * exportação da planilha final.
  */
-export function ResultStep({ sectionId, result, onReset }: ResultStepProps) {
+export function ResultStep({ sectionId, labels, result, onReset }: ResultStepProps) {
   const [tab, setTab] = useState<TabKey>('todos')
   const [format, setFormat] = useState<'xlsx' | 'xls'>('xlsx')
   const [exporting, setExporting] = useState(false)
@@ -38,7 +42,7 @@ export function ResultStep({ sectionId, result, onReset }: ResultStepProps) {
     setExporting(true)
     setExportError(null)
     try {
-      await exportComparison(result, format, sectionId)
+      await exportComparison(result, format, labels, sectionId)
     } catch (err) {
       setExportError(err instanceof Error ? err.message : 'Não foi possível gerar o arquivo.')
     } finally {
@@ -67,31 +71,31 @@ export function ResultStep({ sectionId, result, onReset }: ResultStepProps) {
       <div>
         <h2>3. Resultado da comparação</h2>
         <p className="card-subtitle">
-          Confira entradas, saídas e alterações antes de exportar a planilha atualizada.
+          {labels.resultSubtitle}
         </p>
       </div>
 
       <div className="summary-grid">
         <div className="summary-tile" data-tone="good">
           <span className="summary-tile__value">{result.summary.entradas}</span>
-          <span className="summary-tile__label">Entradas</span>
+          <span className="summary-tile__label">{labels.plural.entrada}</span>
         </div>
         <div className="summary-tile" data-tone="critical">
           <span className="summary-tile__value">{result.summary.saidas}</span>
-          <span className="summary-tile__label">Saídas</span>
+          <span className="summary-tile__label">{labels.plural.saida}</span>
         </div>
         <div className="summary-tile" data-tone="warning">
           <span className="summary-tile__value">{result.summary.alterados}</span>
-          <span className="summary-tile__label">Alterados</span>
+          <span className="summary-tile__label">{labels.plural.alterado}</span>
         </div>
         <div className="summary-tile" data-tone="primary">
           <span className="summary-tile__value">{result.summary.totalAtivos}</span>
-          <span className="summary-tile__label">Total de ativos</span>
+          <span className="summary-tile__label">{labels.totalActive}</span>
         </div>
       </div>
 
       <div role="tablist" className="tabs" aria-label="Filtrar resultado">
-        {TABS.map(({ key, label }) => (
+        {buildTabs(labels).map(({ key, label }) => (
           <button
             key={key}
             type="button"
@@ -126,7 +130,7 @@ export function ResultStep({ sectionId, result, onReset }: ResultStepProps) {
               {rows.map((row, index) => (
                 <tr key={`${row.status}-${index}`}>
                   <td>
-                    <StatusBadge status={row.status} />
+                    <StatusBadge status={row.status} label={labels.status[row.status]} />
                   </td>
                   {result.identityFields.map((field) => (
                     <td key={field.key}>{row.identity[field.key] ?? ''}</td>

@@ -80,7 +80,7 @@
 .app-main {
   flex: 1;
   width: 100%;
-  max-width: 1080px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: clamp(20px, 4vw, 40px) clamp(16px, 4vw, 40px) 64px;
   display: flex;
@@ -88,37 +88,29 @@
   gap: 24px;
 }
 
-/* Quando as duas seções chegam no passo de resultado ao mesmo tempo, ficam lado a lado em vez de empilhadas. */
-.app-main--split {
-  max-width: 1600px;
-}
-
-.comparators {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.comparators--split {
+/* Seções em pares, lado a lado; cada par começa abaixo do mais alto do par anterior. */
+.sections {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 48px 32px;
   align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .sections {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sections > .comparator-section + .comparator-section {
+    padding-top: 32px;
+    border-top: 1px solid var(--border);
+  }
 }
 
 .comparator-section {
   display: flex;
   flex-direction: column;
   gap: 24px;
-}
-
-.comparators:not(.comparators--split) .comparator-section + .comparator-section {
-  padding-top: 32px;
-  border-top: 1px solid var(--border);
-}
-
-.comparators + .comparator-section {
-  padding-top: 32px;
-  border-top: 1px solid var(--border);
 }
 
 .comparator-section__title {
@@ -613,6 +605,54 @@
 .unify-add-slot:hover {
   border-color: var(--primary);
   background: var(--primary-soft);
+}
+
+.pdf-merge-list {
+  list-style: decimal inside;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pdf-merge-list__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-alt);
+}
+
+.pdf-merge-list__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.pdf-merge-list__btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.pdf-merge-list__btn:not(:disabled):hover {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.pdf-merge-list__btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .unify-mapping-table-wrap {

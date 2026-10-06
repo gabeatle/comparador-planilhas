@@ -1,5 +1,6 @@
 import type { ComparisonField, IdentityFieldDef, IdentityMapping, ParsedSheet } from '../types'
 import { normalizeHeader } from '../lib/mapping'
+import type { ComparatorLabels } from '../comparatorProfiles'
 
 type Side = 'previous' | 'current'
 
@@ -129,6 +130,7 @@ interface MappingStepProps {
   /** Prefixo único da seção (perfil), usado para evitar colisão de ids de elementos quando duas seções coexistem na página. */
   sectionId: string
   identityFields: IdentityFieldDef[]
+  labels: ComparatorLabels
   previousSheet: ParsedSheet
   currentSheet: ParsedSheet
   previousIdentity: IdentityMapping
@@ -152,6 +154,7 @@ interface MappingStepProps {
 export function MappingStep({
   sectionId,
   identityFields,
+  labels,
   previousSheet,
   currentSheet,
   previousIdentity,
@@ -221,7 +224,7 @@ export function MappingStep({
       <div className="mapping-grid">
         <MappingPanel
           panelId={`${sectionId}-previous`}
-          title="Mês anterior"
+          title={labels.previousPanel}
           sheet={previousSheet}
           identityFields={identityFields}
           identity={previousIdentity}
@@ -233,7 +236,7 @@ export function MappingStep({
         />
         <MappingPanel
           panelId={`${sectionId}-current`}
-          title="Mês atual"
+          title={labels.currentPanel}
           sheet={currentSheet}
           identityFields={identityFields}
           identity={currentIdentity}
@@ -255,7 +258,7 @@ export function MappingStep({
           Voltar
         </button>
         <button type="button" className="btn btn-primary" disabled={!canContinue} onClick={onContinue}>
-          Comparar planilhas
+          Comparar
         </button>
       </div>
     </div>

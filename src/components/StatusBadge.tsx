@@ -1,10 +1,9 @@
 import type { CSSProperties } from 'react'
 import type { RowStatus } from '../types'
-import { STATUS_LABELS } from '../types'
 
 /**
  * Cor do indicador (bolinha) de cada status. Servem só como reforço visual —
- * o texto do rótulo (STATUS_LABELS) é sempre exibido junto, então a
+ * o texto do rótulo é sempre exibido junto, então a
  * informação nunca depende só da cor.
  */
 const DOT_COLORS: Record<RowStatus, string> = {
@@ -17,13 +16,14 @@ const DOT_COLORS: Record<RowStatus, string> = {
 /**
  * Selo colorido que mostra o status de uma linha de resultado (Entrada,
  * Saída, Alterado ou Permanece), com uma bolinha indicativa + o nome por
- * extenso.
+ * extenso. O nome vem do perfil (`ComparatorLabels.status`), já que muda
+ * conforme o tipo de comparação.
  */
-export function StatusBadge({ status }: { status: RowStatus }) {
+export function StatusBadge({ status, label }: { status: RowStatus; label: string }) {
   const style = { '--dot-color': DOT_COLORS[status] } as CSSProperties
   return (
     <span className="badge" style={style}>
-      {STATUS_LABELS[status]}
+      {label}
     </span>
   )
 }

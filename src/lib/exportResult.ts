@@ -1,5 +1,6 @@
 import type { ComparisonField, ComparisonResult, ComparisonRow, IdentityFieldDef } from '../types'
-import { ISSUE_LABELS, STATUS_LABELS } from '../types'
+import { ISSUE_LABELS } from '../types'
+import type { ComparatorLabels } from '../comparatorProfiles'
 import { buildWorkbook, downloadWorkbook } from './excel'
 
 /**
@@ -12,9 +13,15 @@ import { buildWorkbook, downloadWorkbook } from './excel'
  * @param row Linha de resultado (entrada, saída, alterado ou permanece).
  * @param identityFields Campos de identidade usados nesta rodada, na ordem de exportação.
  * @param fields Campos de comparação usados nesta rodada, na ordem de exportação.
+ * @param labels Rótulos do perfil, para o texto da coluna "Status".
  * @returns Objeto pronto para virar uma linha de planilha via SheetJS.
  */
-function toExportRow(row: ComparisonRow, identityFields: IdentityFieldDef[], fields: ComparisonField[]) {
+function toExportRow(
+  row: ComparisonRow,
+  identityFields: IdentityFieldDef[],
+  fields: ComparisonField[],
+  labels: ComparatorLabels,
+) {
   const identityColumns: Record<string, string> = {}
   for (const field of identityFields) {
     identityColumns[field.label] = row.identity[field.key] ?? ''
@@ -26,7 +33,7 @@ function toExportRow(row: ComparisonRow, identityFields: IdentityFieldDef[], fie
   }
 
   return {
-    Status: STATUS_LABELS[row.status],
+    Status: labels.status[row.status],
     ...identityColumns,
     ...fieldColumns,
     Alterações: row.changes.map((change) => `${change.label}: ${change.before} → ${change.after}`).join('; '),
@@ -38,16 +45,19 @@ function toExportRow(row: ComparisonRow, identityFields: IdentityFieldDef[], fie
  * Gera e baixa a planilha final com o resultado da comparação, no formato
  * escolhido pelo usuário (.xlsx ou .xls). O arquivo final tem uma aba por
  * indicador ("Resumo") mais uma aba para cada um dos filtros exibidos na
- * tela de resultado, na mesma ordem: "Todos", "Diferenças", "Entradas",
- * "Saídas" e "Alterados".
+ * tela de resultado, na mesma ordem: "Todos", "Diferenças" e uma por status
+ * (com os nomes do perfil — "Entradas", "Saídas" e "Alterados" no
+ * comparador mês a mês).
  *
  * @param result Resultado da comparação (linhas classificadas + resumo).
  * @param format Formato de exportação escolhido pelo usuário.
+ * @param labels Rótulos do perfil (nomes dos status e das abas).
  * @param filenamePrefix Prefixo do nome do arquivo baixado (ex: "fatura", "matriz"), para não colidir entre perfis.
  */
 export async function exportComparison(
   result: ComparisonResult,
   format: 'xlsx' | 'xls',
+  labels: ComparatorLabels,
   filenamePrefix: string,
 ): Promise<void> {
   const diferencas = result.rows.filter((row) => row.status !== 'permanece')
@@ -56,23 +66,23 @@ export async function exportComparison(
   const alterados = result.rows.filter((row) => row.status === 'alterado')
 
   const resumo = [
-    { Indicador: 'Entradas', Quantidade: result.summary.entradas },
-    { Indicador: 'Saídas', Quantidade: result.summary.saidas },
-    { Indicador: 'Alterados', Quantidade: result.summary.alterados },
-    { Indicador: 'Permanecem sem alteração', Quantidade: result.summary.permanecem },
-    { Indicador: 'Total de ativos no mês', Quantidade: result.summary.totalAtivos },
+    { Indicador: labels.plural.entrada, Quantidade: result.summary.entradas },
+    { Indicador: labels.plural.saida, Quantidade: result.summary.saidas },
+    { Indicador: labels.plural.alterado, Quantidade: result.summary.alterados },
+    { Indicador: labels.plural.permanece, Quantidade: result.summary.permanecem },
+    { Indicador: labels.totalActive, Quantidade: result.summary.totalAtivos },
   ]
 
   /** Atalho que já fixa os campos de identidade/comparação desta rodada, para usar em `.map()` abaixo. */
-  const toRow = (row: ComparisonRow) => toExportRow(row, result.identityFields, result.fields)
+  const toRow = (row: ComparisonRow) => toExportRow(row, result.identityFields, result.fields, labels)
 
   const workbook = await buildWorkbook([
     { name: 'Resumo', rows: resumo },
     { name: 'Todos', rows: result.rows.map(toRow) },
     { name: 'Diferenças', rows: diferencas.map(toRow) },
-    { name: 'Entradas', rows: entradas.map(toRow) },
-    { name: 'Saídas', rows: saidas.map(toRow) },
-    { name: 'Alterados', rows: alterados.map(toRow) },
+    { name: labels.plural.entrada, rows: entradas.map(toRow) },
+    { name: labels.plural.saida, rows: saidas.map(toRow) },
+    { name: labels.plural.alterado, rows: alterados.map(toRow) },
   ])
 
   await downloadWorkbook(workbook, `${filenamePrefix}-atualizada`, format)

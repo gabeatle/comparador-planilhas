@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { ComparatorProfile } from '../comparatorProfiles'
 import { UploadStep } from './UploadStep'
 import type { LoadedFile } from './UploadStep'
@@ -8,7 +8,7 @@ import { guessIdentityMapping } from '../lib/mapping'
 import { buildRecords, compareMonths } from '../lib/compare'
 import type { ComparisonField, IdentityMapping } from '../types'
 
-export type Step = 'upload' | 'mapping' | 'result'
+type Step = 'upload' | 'mapping' | 'result'
 
 /** Ordem fixa dos passos do fluxo, usada para navegação e para os indicadores no topo da tela. */
 const STEP_ORDER: Step[] = ['upload', 'mapping', 'result']
@@ -22,23 +22,16 @@ const STEP_LABELS: Record<Step, string> = {
 
 interface ComparatorSectionProps {
   profile: ComparatorProfile
-  /** Chamado sempre que o passo atual desta seção muda, para o `App.tsx` decidir o layout (ver `.app-main--split`). */
-  onStepChange?: (step: Step) => void
 }
 
 /**
  * Uma seção completa de comparação (upload → mapeamento → resultado),
  * parametrizada por um `ComparatorProfile` (Fatura, Matriz, etc.). Guarda o
  * estado do fluxo inteiro dessa seção — cada seção é independente das
- * outras que estiverem na mesma página (ver `App.tsx`), inclusive quanto ao
- * passo atual.
+ * outras que estiverem na mesma página (ver `App.tsx`).
  */
-export function ComparatorSection({ profile, onStepChange }: ComparatorSectionProps) {
+export function ComparatorSection({ profile }: ComparatorSectionProps) {
   const [step, setStep] = useState<Step>('upload')
-
-  useEffect(() => {
-    onStepChange?.(step)
-  }, [step, onStepChange])
 
   const [previous, setPrevious] = useState<LoadedFile | null>(null)
   const [current, setCurrent] = useState<LoadedFile | null>(null)
@@ -107,6 +100,8 @@ export function ComparatorSection({ profile, onStepChange }: ComparatorSectionPr
           current={current}
           onPreviousChange={setPrevious}
           onCurrentChange={setCurrent}
+          previousAccept={profile.previousAccept}
+          currentAccept={profile.currentAccept}
           onContinue={handleGoToMapping}
         />
       )}
@@ -115,6 +110,7 @@ export function ComparatorSection({ profile, onStepChange }: ComparatorSectionPr
         <MappingStep
           sectionId={profile.id}
           identityFields={profile.identityFields}
+          labels={profile.labels}
           previousSheet={previous.sheet}
           currentSheet={current.sheet}
           previousIdentity={previousIdentity}
@@ -129,7 +125,7 @@ export function ComparatorSection({ profile, onStepChange }: ComparatorSectionPr
       )}
 
       {step === 'result' && comparisonResult && (
-        <ResultStep sectionId={profile.id} result={comparisonResult} onReset={handleReset} />
+        <ResultStep sectionId={profile.id} labels={profile.labels} result={comparisonResult} onReset={handleReset} />
       )}
     </section>
   )
